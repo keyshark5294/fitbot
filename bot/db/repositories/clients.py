@@ -10,8 +10,16 @@ class ClientRepository(BaseRepository):
         result = await self.session.execute(select(Client).where(Client.tg_id == tg_id))
         return result.scalar_one_or_none()
 
-    async def create(self, tg_id: int, tg_username: str | None, phone: str | None) -> Client:
-        client = Client(tg_id=tg_id, tg_username=tg_username, phone=phone)
+    async def create(
+        self,
+        tg_id: int,
+        tg_username: str | None,
+        full_name: str | None,
+        phone: str | None,
+    ) -> Client:
+        client = Client(
+            tg_id=tg_id, tg_username=tg_username, full_name=full_name, phone=phone
+        )
         self.session.add(client)
         await self.session.commit()
         await self.session.refresh(client)
