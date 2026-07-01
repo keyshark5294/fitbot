@@ -10,6 +10,16 @@ class ClientRepository(BaseRepository):
         result = await self.session.execute(select(Client).where(Client.tg_id == tg_id))
         return result.scalar_one_or_none()
 
+    async def get(self, client_id: int) -> Client | None:
+        return await self.session.get(Client, client_id)
+
+    async def list_all(self) -> list[Client]:
+        """Все клиенты для тренерских списков (назначение программы и т.п.)."""
+        result = await self.session.execute(
+            select(Client).order_by(Client.created_at.desc())
+        )
+        return list(result.scalars().all())
+
     async def create(
         self,
         tg_id: int,
