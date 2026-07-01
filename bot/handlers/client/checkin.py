@@ -52,6 +52,18 @@ async def checkin_start(message: Message, session: AsyncSession, state: FSMConte
     await message.answer("Что за отчёт?", reply_markup=_kind_kb())
 
 
+@router.callback_query(F.data.startswith("remck:"))
+async def checkin_from_reminder(cb: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка «Отправить отчёт» из напоминания — тип уже известен, сразу к фото."""
+    kind = cb.data.split(":", 1)[1]
+    if kind not in CHECKIN_KIND_LABELS:
+        kind = "workout"
+    await state.set_state(NewCheckin.photo)
+    await state.update_data(kind=kind)
+    await cb.message.answer("Пришли фото отчёта 📸")
+    await cb.answer()
+
+
 @router.callback_query(NewCheckin.kind, F.data.startswith("ckind:"))
 async def checkin_kind(cb: CallbackQuery, state: FSMContext) -> None:
     kind = cb.data.split(":", 1)[1]

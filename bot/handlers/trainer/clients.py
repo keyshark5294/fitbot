@@ -89,11 +89,14 @@ async def client_card(cb: CallbackQuery, session: AsyncSession) -> None:
     if client is None:
         await cb.answer("Клиент не найден", show_alert=True)
         return
-    kb = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
             text="📋 Назначить программу", callback_data=f"cassign_pick:{client.id}"
-        )
-    ]])
+        )],
+        [InlineKeyboardButton(
+            text="⏰ Напоминания", callback_data=f"rem_list:{client.id}"
+        )],
+    ])
     await cb.message.answer(await _render_card(session, client), reply_markup=kb)
     await cb.answer()
 
