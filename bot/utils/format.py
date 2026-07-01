@@ -9,6 +9,13 @@ KIND_LABELS: dict[str, str] = {
     "combined": "🔁 Комбо",
 }
 
+# Виды отчёта клиента (checkins.kind)
+CHECKIN_KIND_LABELS: dict[str, str] = {
+    "workout": "🏋️ Тренировка",
+    "meal": "🥗 Питание",
+    "progress": "📈 Прогресс",
+}
+
 
 def format_program(program: Program) -> str:
     """Карточка программы. Пункты (program_items) добавим позже."""
