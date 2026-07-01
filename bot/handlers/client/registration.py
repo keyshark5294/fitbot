@@ -10,12 +10,12 @@ from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, ReplyKeyboardRemove
+from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import settings
 from bot.db.repositories.clients import ClientRepository
-from bot.keyboards import request_contact_kb
+from bot.keyboards import client_menu_kb, request_contact_kb
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -34,9 +34,8 @@ async def start(message: Message, session: AsyncSession, state: FSMContext) -> N
         # повторный /start уже зарегистрированного не плодит дублей
         await state.clear()
         await message.answer(
-            f"С возвращением, {client.full_name or 'спортсмен'}! "
-            "Ты уже зарегистрирован.\nTODO: показать меню клиента.",
-            reply_markup=ReplyKeyboardRemove(),
+            f"С возвращением, {client.full_name or 'спортсмен'}! Чем займёмся?",
+            reply_markup=client_menu_kb(),
         )
         return
 
@@ -79,8 +78,8 @@ async def got_contact(
     if await clients.get_by_tg_id(message.from_user.id) is not None:
         await state.clear()
         await message.answer(
-            "Ты уже зарегистрирован. TODO: показать меню клиента.",
-            reply_markup=ReplyKeyboardRemove(),
+            "Ты уже зарегистрирован. Вот меню 👇",
+            reply_markup=client_menu_kb(),
         )
         return
 
@@ -94,9 +93,8 @@ async def got_contact(
     await state.clear()
 
     await message.answer(
-        f"Готово, {client.full_name or 'спортсмен'}! Ты зарегистрирован.\n"
-        "TODO: показать меню клиента.",
-        reply_markup=ReplyKeyboardRemove(),
+        f"Готово, {client.full_name or 'спортсмен'}! Ты зарегистрирован. Вот меню 👇",
+        reply_markup=client_menu_kb(),
     )
 
     # уведомляем тренера о новом клиенте
