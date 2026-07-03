@@ -13,9 +13,10 @@ class Settings(BaseSettings):
     database_url: str  # postgresql+asyncpg://user:pass@host:5432/db
     redis_url: str | None = None  # для FSM; если пусто — MemoryStorage (dev)
 
-    # YooKassa — Phase 0 заглушки, заполнишь при подключении платежей
-    yookassa_shop_id: str | None = None
-    yookassa_secret_key: str | None = None
+    # Оплата — ручной сценарий (перевод на карту + подтверждение тренером).
+    # Реквизиты тестовые; настоящие подставить в .env.
+    payment_card: str = "0000 0000 0000 0000"
+    payment_recipient: str = "Тест Тестович Т."
 
 
 settings = Settings()

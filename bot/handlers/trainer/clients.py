@@ -15,10 +15,14 @@ from aiogram.types import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
 from bot.db.models import Client
 from bot.db.repositories.checkins import CheckinRepository
 from bot.db.repositories.clients import ClientRepository
 from bot.db.repositories.programs import ProgramRepository
+from bot.db.repositories.subscriptions import SubscriptionRepository
 from bot.utils.format import format_program
 from bot.utils.stats import days_since, plural_ru
 
@@ -43,9 +47,22 @@ def _clients_kb(clients: list[Client]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def _subscription_line(sub, tz_name: str) -> str:
+    if sub is None:
+        return "нет"
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        tz = timezone.utc
+    end = sub.current_period_end.astimezone(tz).strftime("%d.%m.%Y")
+    active = sub.status == "active" and sub.current_period_end > datetime.now(timezone.utc)
+    return f"до {end}" if active else f"истекла {end}"
+
+
 async def _render_card(session: AsyncSession, client: Client) -> str:
     program = await ProgramRepository(session).get_active_for_client(client.id)
     counts = await CheckinRepository(session).status_counts(client.id)
+    sub = await SubscriptionRepository(session).get_current(client.id)
 
     username = f" (@{escape(client.tg_username)})" if client.tg_username else ""
     days = days_since(client.created_at, client.timezone)
@@ -59,6 +76,7 @@ async def _render_card(session: AsyncSession, client: Client) -> str:
         f"Часовой пояс: {escape(client.timezone)}",
         f"С нами: {days_str}",
         f"📋 Программа: {escape(program.title) if program else 'не назначена'}",
+        f"💳 Оплата: {_subscription_line(sub, client.timezone)}",
     ]
     total = sum(counts.values())
     if total:

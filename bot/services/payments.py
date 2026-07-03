@@ -1,15 +1,31 @@
-"""YooKassa рекуррент + чек ФНС. Перенести логику из ConnectAssist.
-Phase 0 — заглушки интерфейса."""
-import logging
+"""Платежи — РУЧНОЙ сценарий: клиент переводит на карту, тренер подтверждает.
+Никакой YooKassa/вебхуков/чеков ФНС (решение под «одного тренера»).
+Тариф один — «Сопровождение», зашит константами (при желании поменять число тут)."""
+from decimal import Decimal
 
-logger = logging.getLogger(__name__)
+from bot.config import settings
+
+PLAN_NAME = "Сопровождение"
+PLAN_AMOUNT: Decimal = Decimal("9900")
+PLAN_PERIOD_DAYS = 30
+# за сколько дней до конца периода начинаем напоминать об оплате
+EXPIRY_NOTICE_DAYS = 3
 
 
-async def create_recurrent_payment(client_id: int, amount: str, plan: str) -> str:
-    # TODO: перенос из ConnectAssist (создание платежа, сохранение payment_method_id)
-    raise NotImplementedError
+def format_amount(amount: Decimal | int) -> str:
+    """9900 -> «9 900 ₽»."""
+    return f"{int(amount):,}".replace(",", " ") + " ₽"
 
 
-async def issue_fns_receipt(payment_id: str) -> None:
-    # TODO: перенос из ConnectAssist (MoyNalog / ФНС чек)
-    raise NotImplementedError
+def payment_info() -> str:
+    """Текст с тарифом и реквизитами для клиента."""
+    return (
+        f"💳 <b>Тариф «{PLAN_NAME}»</b>\n"
+        f"Стоимость: <b>{format_amount(PLAN_AMOUNT)}</b> / {PLAN_PERIOD_DAYS} дней\n\n"
+        "Что входит: персональная программа, напоминания, безлимит фото-отчётов "
+        "с разбором тренером, обратная связь.\n\n"
+        "<b>Как оплатить:</b>\n"
+        f"Перевод на карту: <code>{settings.payment_card}</code>\n"
+        f"Получатель: {settings.payment_recipient}\n\n"
+        "После перевода нажми «Я оплатил» — тренер подтвердит, и доступ продлится."
+    )

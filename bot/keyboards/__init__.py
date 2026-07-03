@@ -7,6 +7,7 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 BTN_PROGRAM = "📋 Моя программа"
 BTN_CHECKIN = "📸 Отчёт"
 BTN_PROFILE = "👤 Профиль"
+BTN_PAY = "💳 Оплата"
 
 
 def client_menu_kb() -> ReplyKeyboardMarkup:
@@ -15,6 +16,7 @@ def client_menu_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text=BTN_PROGRAM)],
             [KeyboardButton(text=BTN_CHECKIN), KeyboardButton(text=BTN_PROFILE)],
+            [KeyboardButton(text=BTN_PAY)],
         ],
         resize_keyboard=True,
     )
