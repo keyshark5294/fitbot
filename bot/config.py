@@ -8,7 +8,8 @@ class Settings(BaseSettings):
     )
 
     bot_token: str
-    trainer_tg_id: int  # единственный тренер — его Telegram id (роль определяется этим)
+    trainer_tg_id: int  # тренер — её Telegram id; ей идут все уведомления
+    admin_tg_id: int | None = None  # владелец — полный доступ как у тренера (см. IsTrainer)
 
     database_url: str  # postgresql+asyncpg://user:pass@host:5432/db
     redis_url: str | None = None  # для FSM; если пусто — MemoryStorage (dev)
