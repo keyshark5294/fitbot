@@ -16,15 +16,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.repositories.clients import ClientRepository
 from bot.db.repositories.reminders import ReminderRepository
-from bot.utils.format import REMINDER_KIND_LABELS, format_reminder
+from bot.utils.format import DAY_SHORT, REMINDER_KIND_LABELS, format_reminder
 
 router = Router()
 
-DAY_PRESETS: dict[str, tuple[str, list[int]]] = {
-    "daily": ("Ежедневно", [1, 2, 3, 4, 5, 6, 7]),
-    "weekdays": ("По будням (Пн–Пт)", [1, 2, 3, 4, 5]),
-    "mwf": ("Пн/Ср/Пт", [1, 3, 5]),
+# быстрые наборы для кнопок-подсказок при выборе дней
+DAY_QUICK: dict[str, list[int]] = {
+    "all": [1, 2, 3, 4, 5, 6, 7],
+    "week": [1, 2, 3, 4, 5],
 }
+
+
+def _days_kb(selected: set[int]) -> InlineKeyboardMarkup:
+    """Клавиатура выбора дней: тап переключает день, ✅ — выбран."""
+    def day_btn(n: int) -> InlineKeyboardButton:
+        mark = "✅ " if n in selected else ""
+        return InlineKeyboardButton(text=f"{mark}{DAY_SHORT[n]}", callback_data=f"rday:{n}")
+
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [day_btn(n) for n in (1, 2, 3, 4)],
+        [day_btn(n) for n in (5, 6, 7)],
+        [
+            InlineKeyboardButton(text="Все дни", callback_data="rday:all"),
+            InlineKeyboardButton(text="Будни", callback_data="rday:week"),
+            InlineKeyboardButton(text="Сброс", callback_data="rday:clear"),
+        ],
+        [InlineKeyboardButton(text="✅ Готово", callback_data="rdays_done")],
+    ])
 
 
 class NewReminder(StatesGroup):
@@ -113,23 +131,40 @@ async def reminder_time(message: Message, state: FSMContext) -> None:
     if parsed is None:
         await message.answer("Не понял время. Введи в формате ЧЧ:ММ, напр. 08:00 или 18:30.")
         return
-    await state.update_data(hour=parsed.hour, minute=parsed.minute)
+    await state.update_data(hour=parsed.hour, minute=parsed.minute, days=[])
     await state.set_state(NewReminder.days)
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=label, callback_data=f"rdays:{key}")]
-        for key, (label, _) in DAY_PRESETS.items()
-    ])
-    await message.answer("В какие дни?", reply_markup=kb)
+    await message.answer(
+        "В какие дни? Отметь нужные и нажми «Готово».", reply_markup=_days_kb(set())
+    )
 
 
-@router.callback_query(NewReminder.days, F.data.startswith("rdays:"))
-async def reminder_days(cb: CallbackQuery, session: AsyncSession, state: FSMContext) -> None:
-    preset = cb.data.split(":", 1)[1]
-    if preset not in DAY_PRESETS:
-        await cb.answer("Неизвестный набор дней", show_alert=True)
-        return
-    _, days = DAY_PRESETS[preset]
+@router.callback_query(NewReminder.days, F.data.startswith("rday:"))
+async def reminder_days_toggle(cb: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
+    selected = set(data.get("days", []))
+    value = cb.data.split(":", 1)[1]
+    if value in DAY_QUICK:
+        new_selected = set(DAY_QUICK[value])
+    elif value == "clear":
+        new_selected = set()
+    else:
+        new_selected = selected ^ {int(value)}  # переключаем один день
+
+    if new_selected == selected:
+        await cb.answer()  # ничего не изменилось — не дёргаем edit
+        return
+    await state.update_data(days=sorted(new_selected))
+    await cb.message.edit_reply_markup(reply_markup=_days_kb(new_selected))
+    await cb.answer()
+
+
+@router.callback_query(NewReminder.days, F.data == "rdays_done")
+async def reminder_days_done(cb: CallbackQuery, session: AsyncSession, state: FSMContext) -> None:
+    data = await state.get_data()
+    days = sorted(set(data.get("days", [])))
+    if not days:
+        await cb.answer("Выбери хотя бы один день", show_alert=True)
+        return
     await state.clear()
 
     reminder = await ReminderRepository(session).create(
