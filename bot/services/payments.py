@@ -6,7 +6,7 @@ from decimal import Decimal
 from bot.config import settings
 
 PLAN_NAME = "Сопровождение"
-PLAN_AMOUNT: Decimal = Decimal("9900")
+PLAN_AMOUNT: Decimal = Decimal("15000")
 PLAN_PERIOD_DAYS = 30
 # за сколько дней до конца периода начинаем напоминать об оплате
 EXPIRY_NOTICE_DAYS = 3
