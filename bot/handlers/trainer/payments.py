@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery
 
 from bot.db.repositories.clients import ClientRepository
 from bot.db.repositories.subscriptions import SubscriptionRepository
-from bot.services.payments import PLAN_AMOUNT, PLAN_NAME, PLAN_PERIOD_DAYS
+from bot.services.payments import PLAN_PERIOD_DAYS, PLANS
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -19,13 +19,17 @@ router = Router()
 
 @router.callback_query(F.data.startswith("payok:"))
 async def payment_confirm(cb: CallbackQuery, session: AsyncSession, bot: Bot) -> None:
-    client_id = int(cb.data.split(":", 1)[1])
-    client = await ClientRepository(session).get(client_id)
+    _, client_id_s, key = cb.data.split(":")
+    plan = PLANS.get(key)
+    if plan is None:
+        await cb.answer("Тариф не найден", show_alert=True)
+        return
+    client = await ClientRepository(session).get(int(client_id_s))
     if client is None:
         await cb.answer("Клиент не найден", show_alert=True)
         return
     sub = await SubscriptionRepository(session).extend(
-        client_id=client.id, plan=PLAN_NAME, amount=PLAN_AMOUNT, period_days=PLAN_PERIOD_DAYS
+        client_id=client.id, plan=plan.name, amount=plan.amount, period_days=PLAN_PERIOD_DAYS
     )
     try:
         tz = ZoneInfo(client.timezone)
@@ -35,10 +39,14 @@ async def payment_confirm(cb: CallbackQuery, session: AsyncSession, bot: Bot) ->
 
     await cb.message.edit_reply_markup(reply_markup=None)
     await cb.answer("Оплата подтверждена ✅")
-    await cb.message.answer(f"✅ Оплата {client.full_name or client.tg_id} подтверждена. Доступ до {end}.")
+    await cb.message.answer(
+        f"✅ Оплата {client.full_name or client.tg_id} подтверждена. "
+        f"Тариф «{plan.name}», доступ до {end}."
+    )
     try:
         await bot.send_message(
-            client.tg_id, f"✅ Оплата подтверждена! Доступ активен до <b>{end}</b>. Спасибо 💪"
+            client.tg_id,
+            f"✅ Оплата подтверждена! Тариф «{plan.name}», доступ активен до <b>{end}</b>. Спасибо 💪",
         )
     except Exception:
         logger.exception("Не удалось уведомить клиента id=%s о подтверждении оплаты", client.id)
